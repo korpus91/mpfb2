@@ -1,0 +1,34 @@
+# Keeps the gamedev MCP search index identical to this repo's default branch (his order 2026-10-31).
+# Any push to the default branch, plus nightly as a safety net. Only the newest run matters.
+name: gamedev index
+on:
+  push:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+concurrency:
+  group: gamedev-index
+  cancel-in-progress: true
+jobs:
+  sync:
+    if: github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+          lfs: false
+          submodules: false
+      - uses: actions/checkout@v4
+        with:
+          repository: korpus91/gamedev-mcp
+          token: ${{ secrets.GAMEDEV_MCP_TOKEN }}
+          path: gamedev-mcp
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: sync to the index
+        env:
+          GAMEDEV_SYNC_URL: ${{ secrets.GAMEDEV_SYNC_URL }}
+        run: node gamedev-mcp/sync.mjs --repo ${{ github.event.repository.name }} --dir repo
